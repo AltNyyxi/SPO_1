@@ -85,24 +85,16 @@ public class Main extends JFrame {
             "Error", "Function", "CharSequence"
     ));
 
-    // Известные глобальные константы / синглтоны
-    private static final Set<String> KNOWN_OBJECTS = new HashSet<>(Arrays.asList(
-            "System", "println", "print", "readLine", "require", "check",
-            "TODO", "error", "listOf", "setOf", "mapOf", "mutableListOf",
-            "mutableSetOf", "mutableMapOf", "arrayOf", "intArrayOf",
-            "emptyList", "emptyMap", "emptySet", "Pair", "Triple"
-    ));
-
     // Многосимвольные операторы (порядок важен — длинные раньше)
     private static final String[] MULTI_CHAR_OPS = new String[]{
             "===", "!==", "<<=", ">>=", "..<",
             "==", "!=", ">=", "<=", "&&", "||", "<<", ">>",
             "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=",
-            "++", "--", "->", "::", "?.", "?:", "!!", "..", "&&"
+            "++", "--", "->", "::", "?.", "?:", "!!", ".."
     };
 
     public Main() {
-        super("Парсер Kotlin - метрики Холстеда");
+        super("Парсер Kotlin — метрики Холстеда");
         initUI();
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1100, 700);
@@ -196,12 +188,11 @@ public class Main extends JFrame {
     private String removeCommentsAndPackage(String code) {
         StringBuilder out = new StringBuilder(code.length());
         int i = 0, n = code.length();
-        int depth = 0; // глубина блочных комментариев (Kotlin их допускает)
+        int depth = 0;
 
         while (i < n) {
             char c = code.charAt(i);
 
-            // --- Вложенный блочный комментарий ---
             if (c == '/' && i + 1 < n && code.charAt(i + 1) == '*') {
                 depth++;
                 i += 2;
@@ -217,7 +208,6 @@ public class Main extends JFrame {
                 continue;
             }
 
-            // --- Линейный комментарий ---
             if (c == '/' && i + 1 < n && code.charAt(i + 1) == '/') {
                 while (i < n && code.charAt(i) != '\n') i++;
                 continue;
@@ -227,7 +217,6 @@ public class Main extends JFrame {
             i++;
         }
 
-        // Убираем package/import целиком по строкам
         String[] lines = out.toString().split("\n", -1);
         StringBuilder sb = new StringBuilder();
         for (String ln : lines) {
@@ -256,7 +245,6 @@ public class Main extends JFrame {
                     if (sb.charAt(j) != '\n') sb.setCharAt(j, ' ');
                     j++;
                 }
-                // закрывающие """ тоже пробелами
                 for (int k = i; k < Math.min(j + 3, n); k++) {
                     if (sb.charAt(k) != '\n') sb.setCharAt(k, ' ');
                 }
@@ -308,14 +296,12 @@ public class Main extends JFrame {
 
     /** Имена функций: идентификатор перед '(' после fun, либо как вызов — name(...) */
     private void collectFunctionNames(String maskedCode) {
-        // Явные объявления
         Pattern p1 = Pattern.compile("\\bfun\\s+(?:<[^>]*>\\s*)?(?:[A-Za-z_]\\w*\\.)?([A-Za-z_]\\w*)\\s*\\(");
         Matcher m1 = p1.matcher(maskedCode);
         while (m1.find()) {
             String name = m1.group(1);
             if (!SKIP_KEYWORDS.contains(name)) functionNames.add(name);
         }
-        // Вызовы
         Pattern p2 = Pattern.compile("\\b([A-Za-z_]\\w*)\\s*\\(");
         Matcher m2 = p2.matcher(maskedCode);
         while (m2.find()) {
@@ -332,7 +318,6 @@ public class Main extends JFrame {
     /** Извлекаем тела функций: fun name(...): Type { ... } (также fun с = expr) */
     private List<String> extractFunctionBodies(String code) {
         List<String> result = new ArrayList<>();
-        // Ищем "fun" ... "(" ... ")" ... "{" — тело в фигурных скобках
         Pattern p = Pattern.compile("\\bfun\\b[^\\n{;=]*?\\(", Pattern.MULTILINE);
         Matcher m = p.matcher(code);
 
@@ -343,9 +328,7 @@ public class Main extends JFrame {
             int parenClose = findMatchingDelim(code, parenOpen, '(', ')');
             if (parenClose < 0) continue;
 
-            // Пропускаем пробелы/переносы, ищем '=' или '{'
             int k = parenClose + 1;
-            // Пропускаем тип возврата до '{' или '='
             while (k < code.length()) {
                 char c = code.charAt(k);
                 if (c == '{' || c == '=') break;
@@ -357,7 +340,6 @@ public class Main extends JFrame {
             if (code.charAt(k) == '{') {
                 int braceEnd = findMatchingDelim(code, k, '{', '}');
                 if (braceEnd > k) {
-                    // Проверяем, не вложено ли в уже обработанный диапазон
                     boolean skip = false;
                     for (int[] r : used) {
                         if (k >= r[0] && k <= r[1]) { skip = true; break; }
@@ -367,7 +349,6 @@ public class Main extends JFrame {
                     result.add(code.substring(k + 1, braceEnd));
                 }
             } else {
-                // expression body: fun foo() = expr
                 int end = code.indexOf('\n', k);
                 if (end < 0) end = code.length();
                 result.add(code.substring(k + 1, end));
@@ -399,7 +380,7 @@ public class Main extends JFrame {
 
             if (Character.isWhitespace(c)) { i++; continue; }
 
-            // --- Raw string (уже замаскирована, но всё же обработаем на всякий случай) ---
+            // --- Raw string ---
             if (c == '"' && i + 2 < n && code.charAt(i + 1) == '"' && code.charAt(i + 2) == '"') {
                 int start = i;
                 i += 3;
@@ -508,10 +489,18 @@ public class Main extends JFrame {
                 // Типы/модификаторы/служебные — пропускаем
                 if (SKIP_KEYWORDS.contains(t.value)) { i++; continue; }
 
-                // "is", "as", "in", "!in", "!is" — операторы
-                // (это уже покрыто SKIP? — нет, is/as/in НЕ в SKIP как операторы)
-                // → разберём явно ниже в HandleOperator, тут не трогаем.
+                // НОВОЕ: идентификатор + '(' (или '{' для trailing lambda) => оператор вызова
+                if (isFunctionCall(tokens, i) || isTrailingLambdaCall(tokens, i)) {
+                    addOperator(t.value + "()");
+                    i++;
+                    // Если это вызов с круглыми скобками — пропускаем саму '(', чтобы не удваивать "()"
+                    if (i < tokens.size() && isOp(tokens.get(i), "(")) {
+                        i++; // пропускаем '('
+                    }
+                    continue;
+                }
 
+                // Иначе — обычная переменная/поле → операнд
                 handleIdentifier(tokens, i);
                 i++;
                 continue;
@@ -537,6 +526,39 @@ public class Main extends JFrame {
         }
     }
 
+    /**
+     * Возвращает true, если сразу за идентификатором (с учётом опциональных
+     * generic-параметров <...>) идёт открывающая круглая скобка.
+     */
+    private boolean isFunctionCall(List<Token> tokens, int idx) {
+        int j = idx + 1;
+        if (j >= tokens.size()) return false;
+
+        // Пропускаем generic-параметры: < ... >
+        if (isOp(tokens.get(j), "<")) {
+            int depth = 0;
+            while (j < tokens.size()) {
+                Token tk = tokens.get(j);
+                if (tk.type == TokenType.Operator && tk.value.equals("<")) depth++;
+                else if (tk.type == TokenType.Operator && tk.value.equals(">")) {
+                    depth--;
+                    if (depth == 0) { j++; break; }
+                } else if (tk.type == TokenType.Operator && tk.value.equals(";")) {
+                    return false;
+                }
+                j++;
+            }
+        }
+
+        return j < tokens.size() && isOp(tokens.get(j), "(");
+    }
+
+    /** Случай вызова без круглых скобок: foo { ... } (trailing lambda). */
+    private boolean isTrailingLambdaCall(List<Token> tokens, int idx) {
+        int j = idx + 1;
+        return j < tokens.size() && isOp(tokens.get(j), "{");
+    }
+
     /** Проверяет, идёт ли после if ... else. */
     private boolean hasElseAfter(List<Token> tokens, int ifIdx) {
         int openParen = ifIdx + 1;
@@ -553,7 +575,6 @@ public class Main extends JFrame {
             if (end < 0) return false;
             j = end + 1;
         } else {
-            // Пропускаем одну инструкцию до ';'
             int depthBrace = 0, depthParen = 0;
             while (j < tokens.size()) {
                 Token tk = tokens.get(j);
@@ -612,10 +633,8 @@ public class Main extends JFrame {
     private void handleOperatorToken(List<Token> tokens, int idx) {
         String v = tokens.get(idx).value;
 
-        // Закрывающие скобки не считаем (учитываем при открывающих)
         if (v.equals(")") || v.equals("}") || v.equals("]")) return;
 
-        // Открывающие скобки
         if (v.equals("(")) {
             if (isTypeCast(tokens, idx)) addOperator("(type)");
             else addOperator("()");
@@ -624,13 +643,9 @@ public class Main extends JFrame {
         if (v.equals("{")) { addOperator("{}"); return; }
         if (v.equals("[")) { addOperator("[]"); return; }
 
-        // Тернарный ?: — это элвис-оператор, считаем как отдельный
         if (v.equals("?:")) { addOperator("?:"); return; }
+        if (v.equals(":"))  { addOperator(":");  return; }
 
-        // : в Kotlin — разделитель типов, наследия, меток. Считаем отдельно.
-        if (v.equals(":")) { addOperator(":"); return; }
-
-        // Унарный/бинарный минус — упрощённо
         if (v.equals("-")) {
             addOperator(isUnary(tokens, idx) ? "-(unary)" : "-");
             return;
@@ -641,7 +656,6 @@ public class Main extends JFrame {
         }
         if (v.equals("!")) { addOperator("!"); return; }
 
-        // Разделители
         if (v.equals(",")) { addOperator(","); return; }
         if (v.equals(";")) { addOperator(";"); return; }
         if (v.equals(".")) { addOperator("."); return; }
@@ -652,32 +666,29 @@ public class Main extends JFrame {
         if (v.equals("?.")) { addOperator("?."); return; }
         if (v.equals("!!")) { addOperator("!!"); return; }
 
-        // Всё остальное — как есть
         addOperator(v);
     }
 
-    /** Унарный +/- : если предыдущий значимый токен — оператор начала выражения/запятая/скобка/ключевое слово, то унарный. */
+    /** Унарный +/- : если предыдущий значимый токен — оператор начала выражения/запятая/скобка/ключевое слово. */
     private boolean isUnary(List<Token> tokens, int idx) {
         if (idx == 0) return true;
         Token prev = tokens.get(idx - 1);
         if (prev.type == TokenType.Operator) {
             String pv = prev.value;
-            // После (, [, {, ,, ;, =, и почти любого оператора — унарный
             if (pv.equals(")") || pv.equals("]") || pv.equals("}")) return false;
             if (pv.equals("++") || pv.equals("--")) return false;
             return true;
         }
         if (prev.type == TokenType.Identifier) {
             String pv = prev.value;
-            // return, throw, in, is, as, val, var — унарный
             if (pv.equals("return") || pv.equals("throw") || pv.equals("in")
-                    || pv.equals("is") || pv.equals("as") || pv.equals("!")) return true;
+                    || pv.equals("is") || pv.equals("as")) return true;
             return false;
         }
         return false;
     }
 
-    /** Приведение типа: (Int) expr, (List<Int>) x, (String?) s */
+    /** Приведение типа: (Int) expr, (String?) s */
     private boolean isTypeCast(List<Token> tokens, int openIdx) {
         if (openIdx + 2 >= tokens.size()) return false;
         int k = openIdx + 1;
@@ -685,9 +696,6 @@ public class Main extends JFrame {
         Token first = tokens.get(k);
         if (first.type != TokenType.Identifier) return false;
 
-        // Может быть "?": (String?)
-        // Может быть generic: (List<Int>)
-        // Ограничимся простой формой: (TypeName) или (TypeName?)
         String typeName = first.value;
         boolean known = TYPE_KEYWORDS.contains(typeName)
                 || userTypes.contains(typeName)
@@ -700,19 +708,14 @@ public class Main extends JFrame {
         return k < tokens.size() && isOp(tokens.get(k), ")");
     }
 
-    /** Идентификаторы-операнды: переменные, имена функций, поля. */
+    /** Идентификатор-операнд: переменная, поле. Имена вызовов сюда НЕ попадают. */
     private void handleIdentifier(List<Token> tokens, int idx) {
         String name = tokens.get(idx).value;
 
-        // Служебные (уже отфильтрованы) — на всякий случай
         if (SKIP_KEYWORDS.contains(name)) return;
-
-        // Если это имя функции при объявлении — всё равно учитываем как операнд (имя функции — идентификатор).
-        // Если это управляющее ключевое слово — уже обработано.
         if (KEYWORD_OPERATORS.contains(name)) { addOperator(name); return; }
-        if (COMPOUND_STARTERS.contains(name)) { return; }
+        if (COMPOUND_STARTERS.contains(name)) return;
 
-        // Иначе — операнд
         addOperand(name);
     }
 
@@ -759,10 +762,10 @@ public class Main extends JFrame {
 
         StringBuilder sb = new StringBuilder();
         sb.append("БАЗОВЫЕ МЕТРИКИ ХОЛСТЕДА\n");
-        sb.append(String.format("  η1  - словарь операторов      = %d%n", n1));
-        sb.append(String.format("  η2  - словарь операндов       = %d%n", n2));
-        sb.append(String.format("  N1  - всего операторов        = %d%n", N1));
-        sb.append(String.format("  N2  - всего операндов         = %d%n", N2));
+        sb.append(String.format("  η1  — словарь операторов      = %d%n", n1));
+        sb.append(String.format("  η2  — словарь операндов       = %d%n", n2));
+        sb.append(String.format("  N1  — всего операторов        = %d%n", N1));
+        sb.append(String.format("  N2  — всего операндов         = %d%n", N2));
         sb.append('\n');
         sb.append("РАСШИРЕННЫЕ МЕТРИКИ\n");
         sb.append(String.format("  η = η1 + η2                   = %d%n", progDict));

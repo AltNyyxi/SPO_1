@@ -1,75 +1,110 @@
-package main
+package com.example.demo
 
-import kotlin.system.exitProcess
+import kotlin.math.sqrt
+import kotlin.math.PI
 
-fun charToValue(c: Char): Int {
-    return when {
-        c in '0'..'9' -> c - '0'
-        c in 'A'..'Z' -> 10 + (c - 'A')
-        c in 'a'..'z' -> 10 + (c - 'a')
-        else -> -1
+const val APP_NAME = "MetricsDemo"
+
+data class Point(val x: Double, val y: Double) {
+    fun distanceTo(other: Point): Double {
+        val dx = this.x - other.x
+        val dy = this.y - other.y
+        return sqrt(dx * dx + dy * dy)
     }
 }
 
-fun valueToChar(value: Int): Char {
-    return when {
-        value in 0..9 -> '0' + value
-        value in 10..35 -> 'A' + (value - 10)
-        else -> '?'
+
+fun square(n: Int): Int = n * n
+
+
+fun sumEven(numbers: List<Int>): Int {
+    var total = 0
+    for (n in numbers) {
+        if (n % 2 == 0) {
+            total += n
+        } else {
+            continue
+        }
     }
+    return total
 }
 
-fun validateNumber(number: String, base: Int): Boolean {
-    if (number.isEmpty()) return false
-    if (base < 2 || base > 36) return false
-    for (c in number) {
-        val v = charToValue(c)
-        if (v < 0 || v >= base) return false
-    }
-    return true
+
+
+fun safeLength(input: String?): Int {
+    val len = input?.length ?: 0
+    val forced = input!!.length
+    return len + forced
 }
 
-fun convert(number: String, fromBase: Int, toBase: Int): String {
-    if (!validateNumber(number, fromBase)) return ""
 
-    var result = 0
-    for (c in number) {
-        result = result * fromBase + charToValue(c)
-    }
-
-    if (result == 0) return "0"
-
-    var output = ""
-    var temp = result
-    while (temp > 0) {
-        val digit = temp % toBase
-        output = valueToChar(digit) + output
-        temp = temp / toBase
-    }
-    return output
+fun processData(items: List<Int>): List<Int> {
+    val filtered = items.filter { it > 0 }
+    val doubled = filtered.map { it * 2 }
+    val sorted = doubled.sortedDescending()
+    return sorted
 }
+
+
+fun rangeDemo(limit: Int): Int {
+    var sum = 0
+    var i = 1
+    while (i <= limit) {
+        sum += i
+        i++
+    }
+
+    var j = 10
+    do {
+        sum = sum - 1
+        j--
+    } while (j > 0)
+
+    for (k in 1..5) {
+        sum += k
+    }
+
+    return sum
+}
+
+fun <T> firstOrNull(list: List<T>, fallback: T): T {
+    return if (list.isNotEmpty()) list[0] else fallback
+}
+
 
 fun main() {
-    println("Введите число:")
-    val number = readLine() ?: exitProcess(1)
+    val p1 = Point(0.0, 0.0)
+    val p2 = Point(3.0, 4.0)
+    println("distance = ${p1.distanceTo(p2)}")
 
-    println("Исходное основание:")
-    val fromBase = readLine()?.toIntOrNull() ?: exitProcess(1)
+    val sq = square(7)
+    println("square = $sq")
 
-    println("Целевое основание:")
-    val toBase = readLine()?.toIntOrNull() ?: exitProcess(1)
+    val total = sumEven(listOf(1, 2, 3, 4, 5, 6))
+    println("sumEven = $total")
 
-    val converted = convert(number, fromBase, toBase)
-    if (converted.isEmpty()) {
-        println("Ошибка: неверное число или основание")
-    } else {
-        println("Результат: $converted")
-    }
+    println(safeLength("kotlin"))
+    println(safeLength(""))
 
-    val check = number.toIntOrNull()
-    if (check != null && check > 0) {
-        println("Проверка: $check")
-    } else {
-        println("Проверка не удалась")
+    val result = processData(listOf(-3, -1, 0, 2, 4, 5))
+    println("processData = $result")
+
+    val r = rangeDemo(5)
+    println("rangeDemo = $r")
+
+    val fallback = firstOrNull(emptyList<Int>(), -1)
+    println("fallback = $fallback")
+
+    val raw = """
+        Raw string line 1
+        Raw string line 2 with $APP_NAME
+    """.trimIndent()
+    println(raw)
+
+    val piApprox = PI
+    println("PI ≈ $piApprox")
+
+    for (i in 1..10 step 2) {
+        print("$i ")
     }
 }
