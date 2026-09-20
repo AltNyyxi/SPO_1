@@ -13,9 +13,7 @@ data class Point(val x: Double, val y: Double) {
     }
 }
 
-
 fun square(n: Int): Int = n * n
-
 
 fun sumEven(numbers: List<Int>): Int {
     var total = 0
@@ -29,14 +27,11 @@ fun sumEven(numbers: List<Int>): Int {
     return total
 }
 
-
-
 fun safeLength(input: String?): Int {
     val len = input?.length ?: 0
     val forced = input!!.length
     return len + forced
 }
-
 
 fun processData(items: List<Int>): List<Int> {
     val filtered = items.filter { it > 0 }
@@ -44,7 +39,6 @@ fun processData(items: List<Int>): List<Int> {
     val sorted = doubled.sortedDescending()
     return sorted
 }
-
 
 fun rangeDemo(limit: Int): Int {
     var sum = 0
@@ -63,14 +57,12 @@ fun rangeDemo(limit: Int): Int {
     for (k in 1..5) {
         sum += k
     }
-
     return sum
 }
 
 fun <T> firstOrNull(list: List<T>, fallback: T): T {
     return if (list.isNotEmpty()) list[0] else fallback
 }
-
 
 fun main() {
     val p1 = Point(0.0, 0.0)
